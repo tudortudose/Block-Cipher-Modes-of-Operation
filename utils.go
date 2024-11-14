@@ -31,3 +31,9 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+func xorBytes(dst, a, b []byte) {
+	for i := range a {
+		dst[i] = a[i] ^ b[i]
+	}
+}

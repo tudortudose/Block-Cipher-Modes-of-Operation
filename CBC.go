@@ -7,12 +7,6 @@ import (
 	"io"
 )
 
-func xorBytes(dst, a, b []byte) {
-	for i := range a {
-		dst[i] = a[i] ^ b[i]
-	}
-}
-
 func encryptCBC(plaintext, key []byte) ([]byte, []byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {

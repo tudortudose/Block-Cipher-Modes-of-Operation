@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/aes"
 	"crypto/rand"
-	"errors"
+	"fmt"
 	"io"
 )
 
@@ -14,23 +14,29 @@ func encryptPCBC(plaintext, key []byte) ([]byte, []byte, error) {
 	}
 
 	blockSize := block.BlockSize()
+
 	plaintext = pad(plaintext)
 
-	ciphertext := make([]byte, len(plaintext))
 	iv := make([]byte, blockSize)
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 		return nil, nil, err
 	}
 
-	prevBlock := iv
+	ciphertext := make([]byte, len(plaintext))
+
+	prevCiphertext := iv
+	prevPlaintext := make([]byte, blockSize)
 
 	for i := 0; i < len(plaintext); i += blockSize {
-		for j := 0; j < blockSize; j++ {
-			plaintext[i+j] ^= prevBlock[j]
-		}
+		xorBlock := make([]byte, blockSize)
 
-		block.Encrypt(ciphertext[i:i+blockSize], plaintext[i:i+blockSize])
-		prevBlock = ciphertext[i : i+blockSize]
+		xorBytes(xorBlock, plaintext[i:i+blockSize], prevCiphertext)
+		xorBytes(xorBlock, xorBlock, prevPlaintext)
+
+		block.Encrypt(ciphertext[i:i+blockSize], xorBlock)
+
+		copy(prevPlaintext, plaintext[i:i+blockSize])
+		prevCiphertext = ciphertext[i : i+blockSize]
 	}
 
 	return ciphertext, iv, nil
@@ -43,21 +49,25 @@ func decryptPCBC(ciphertext, key, iv []byte) ([]byte, error) {
 	}
 
 	blockSize := block.BlockSize()
-	if len(ciphertext) < blockSize {
-		return nil, errors.New("ciphertext size must be at least block size")
+	if len(ciphertext)%blockSize != 0 {
+		return nil, fmt.Errorf("ciphertext length must be a multiple of block size")
 	}
 
 	plaintext := make([]byte, len(ciphertext))
-	prevBlock := iv
+
+	prevCiphertext := iv
+	prevPlaintext := make([]byte, blockSize)
 
 	for i := 0; i < len(ciphertext); i += blockSize {
-		block.Decrypt(plaintext[i:i+blockSize], ciphertext[i:i+blockSize])
+		decryptedBlock := make([]byte, blockSize)
 
-		for j := 0; j < blockSize; j++ {
-			plaintext[i+j] ^= prevBlock[j]
-		}
+		block.Decrypt(decryptedBlock, ciphertext[i:i+blockSize])
 
-		prevBlock = ciphertext[i : i+blockSize]
+		xorBytes(plaintext[i:i+blockSize], decryptedBlock, prevCiphertext)
+		xorBytes(plaintext[i:i+blockSize], plaintext[i:i+blockSize], prevPlaintext)
+
+		copy(prevPlaintext, plaintext[i:i+blockSize])
+		prevCiphertext = ciphertext[i : i+blockSize]
 	}
 
 	return unpad(plaintext)
