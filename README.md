@@ -7,7 +7,7 @@
 #### go build main.go .\CBC.go .\ECB.go .\CFB.go .\OFB.go .\PCBC.go .\CTR.go .\GCM.go .\utils.go
 
 ### Then Run
-#### ./main.go
+#### ./main.exe
 
 ### Build & Run in one command:
 #### go run main.go .\CBC.go .\ECB.go .\CFB.go .\OFB.go .\PCBC.go .\CTR.go .\GCM.go .\utils.go
